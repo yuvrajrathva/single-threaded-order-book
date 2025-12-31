@@ -48,3 +48,37 @@ private:
 
 	Price find_next_best() noexcept;
 };
+
+
+class OrderBook {
+public:
+	OrderBook(Price bid_base, Price ask_base)
+		: bids(bid_base), asks(ask_base) {}
+	
+	inline void on_event(const MarketEvent& ev) noexcept;
+
+	inline Price best_bid() const noexcept { return bids.best(); }
+	inline Price best_ask() const noexcept { return asks.best(); }
+
+private:
+	BookSide<MAX_PRICE_LEVELS> bids;
+	BookSide<MAX_PRICE_LEVELS> asks;	
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
