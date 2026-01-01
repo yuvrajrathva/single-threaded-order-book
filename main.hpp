@@ -66,6 +66,18 @@ private:
 };
 
 
+struct TopOfBook {
+	Price best_bid;
+	Price best_ask;
+	Price spread;
+}
+
+inline Price spread(Price bid, Price ask) noexcept {
+	if(bid == INVALID_PRICE || ask == INVALID_PRICE) return INVALID_PRICE;
+	return ask - bid;
+}
+
+
 
 
 
