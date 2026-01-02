@@ -1,0 +1,58 @@
+# --------------------
+# Build artifacts
+# --------------------
+build/
+build-*/
+cmake-build-*/
+
+# --------------------
+# CMake generated
+# --------------------
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+compile_commands.json
+CTestTestfile.cmake
+
+# --------------------
+# Executables & objects
+# --------------------
+*.o
+*.obj
+*.out
+*.exe
+*.a
+*.so
+*.dylib
+
+# --------------------
+# Debug / profiling
+# --------------------
+gmon.out
+perf.data
+perf.data.old
+callgrind.out.*
+vgcore.*
+*.prof
+
+# --------------------
+# Editor / IDE junk
+# --------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
+
+# --------------------
+# OS files
+# --------------------
+.DS_Store
+Thumbs.db
+
+# --------------------
+# Logs
+# --------------------
+*.log
+
