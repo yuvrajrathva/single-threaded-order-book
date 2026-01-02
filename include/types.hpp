@@ -4,4 +4,4 @@
 using Price = uint32_t;
 using Qty = uint32_t;
 
-constexpr Price INVALID_PRICE = -1;
+constexpr Price INVALID_PRICE = static_cast<Price>(-1);
