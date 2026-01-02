@@ -1,3 +1,0 @@
-/home/yuvraj/Devdev/single-threaded-order-book/build/CMakeFiles/rebuild_cache.dir
-/home/yuvraj/Devdev/single-threaded-order-book/build/CMakeFiles/edit_cache.dir
-/home/yuvraj/Devdev/single-threaded-order-book/build/CMakeFiles/order_book.dir

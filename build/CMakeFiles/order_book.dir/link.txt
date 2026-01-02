@@ -1,1 +1,0 @@
-/usr/bin/c++  -O3 -DNDEBUG   CMakeFiles/order_book.dir/src/main.cpp.o  -o order_book  -lrt -lpthread 
