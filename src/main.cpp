@@ -34,23 +34,15 @@ int main()
 			while(!event_q.push(ev)) _mm_pause();
 		}
 	       
-                // 2️⃣ Cancel best bid
+        	// Cancel best bid
 	        ev = {EventType::Cancel, 1004, 10, true};
 	        while (!event_q.push(ev)) _mm_pause();
 
-	        // 3️⃣ Cancel best ask
+	        // Cancel best ask
 	        ev = {EventType::Cancel, 1010, 10, false};
 	        while (!event_q.push(ev)) _mm_pause();
 
-	        // 4️⃣ Aggressive BUY → Trade against best ask
-	        ev = {EventType::Trade, 1011, 5, true};
-	        while (!event_q.push(ev)) _mm_pause();
-
-	        // 5️⃣ Aggressive SELL → Trade against best bid
-	        ev = {EventType::Trade, 1003, 7, false};
-	        while (!event_q.push(ev)) _mm_pause();
-
-	        // 6️⃣ Refill liquidity
+	        //  Refill liquidity
 	        ev = {EventType::Add, 1006, 20, true};
 	        while (!event_q.push(ev)) _mm_pause();
 
@@ -89,7 +81,9 @@ int main()
 		TopOfBook tob{};
 		while(true) {
 			if(md_q.pop(tob)) {
-
+				std::cout<<"Best bid: "<<tob.best_bid
+						<<" Best ask: "<<tob.best_ask
+						<<" Spread: "<<tob.spread<<"\n";
 			} else {
 				if(producers_done.load(std::memory_order_acquire) &&
 					md_q.empty()) {

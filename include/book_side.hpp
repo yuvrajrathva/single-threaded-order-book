@@ -7,6 +7,8 @@ struct PriceLevel
 	Qty volume = 0;
 };
 
+uint32_t TICK_SIZE = 1; // For now I kept it 1 for simplicity
+
 template <size_t MaxLevels>
 class BookSide
 {
@@ -49,6 +51,7 @@ public:
 
 		if (level.volume < qty)
 			return false;
+
 		level.volume -= qty;
 
 		if (level.volume == 0 && price == best_price)
@@ -74,39 +77,45 @@ public:
 private:
 	inline bool is_valid_price(Price price) const noexcept
 	{
-		return price >= base_price &&
-			   price < base_price + static_cast<Price>(MaxLevels);
+		if (price < base_price)
+			return false;
+
+		const Price delta = price - base_price;
+		const Price level = delta / TICK_SIZE;
+
+		return (delta == (level * TICK_SIZE)) && (level < MaxLevels);
 	}
 
 	inline size_t index_of(Price price) const noexcept
 	{
-		return static_cast<size_t>(price - base_price);
+		const Price delta = price - base_price;
+		return static_cast<size_t>(delta / TICK_SIZE);
 	}
 
 	Price find_next_best(bool is_bid) noexcept
 	{
+		size_t start = index_of(best_price);
+
 		switch (is_bid)
 		{
 		case true:
-			for (int64_t p = static_cast<int64_t>(best_price) - 1;
-				 p >= static_cast<int64_t>(base_price);
-				 --p)
+			for (size_t i = start; i-- > 0; )
 			{
-				if (levels[index_of(static_cast<Price>(p))].volume > 0)
+				if (levels[i].volume > 0)
 				{
-					return static_cast<Price>(p);
+					return base_price + (i * TICK_SIZE);
 				}
 			}
 			break;
 
 		case false:
-			for (int64_t p = static_cast<int64_t>(base_price);
-				 p < static_cast<int64_t>(best_price);
-				 ++p)
+			for (size_t i = start+1;
+				 i < MaxLevels;
+				 ++i)
 			{
-				if (levels[index_of(static_cast<Price>(p))].volume > 0)
+				if (levels[i].volume > 0)
 				{
-					return static_cast<Price>(p);
+					return base_price + (i * TICK_SIZE);
 				}
 			}
 			break;
