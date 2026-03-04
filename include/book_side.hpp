@@ -110,6 +110,41 @@ public:
 		return levels_[idx];
 	}
 
+	void get_depth(DepthLevel* out, size_t max_levels, size_t& actual_count) const noexcept
+	{
+		actual_count = 0;
+		if(best_level_idx_ == -1) return;
+		
+		if constexpr(side_ == Side::BID)
+		{
+			for(int i=best_level_idx_; i>=0 && actual_count < max_levels; i--)
+			{
+				if(levels_[i].order_count > 0)
+				{
+					out[actual_count++] = {
+						.price = base_price_ + (i * tick_size_),
+						.qty = levels_[i].total_qty,
+						.order_count = levels_[i].order_count
+					};
+				}
+			}
+		}
+		else
+		{
+			for(int i=best_level_idx_; i<static_cast<int>(MaxLevels) && actual_count < max_levels; i++)
+			{
+				if(levels_[i].order_count > 0)
+				{
+					out[actual_count++] = {
+						.price = base_price_ + (i * tick_size_),
+						.qty = levels_[i].total_qty,
+						.order_count = levels_[i].order_count
+					};
+				}
+			}
+		}
+
+	}
 private:
 	[[nodiscard]] bool is_valid_index(int idx) const noexcept
 	{

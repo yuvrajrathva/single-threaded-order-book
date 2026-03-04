@@ -31,3 +31,29 @@ struct PriceLevel
     Order* head = nullptr;
     Order* tail = nullptr;
 };
+
+struct TopOfBook
+{
+    Price best_bid;
+    Price best_ask;
+    Qty best_bid_qty;
+    Qty best_ask_qty;
+    Price spread;
+    uint64_t recv_timestamp_ns;   // When WebSocket received the message
+    uint64_t update_timestamp_ns; // When orderbook was updated
+};
+
+struct DepthLevel
+{
+    Price price;
+    Qty qty;
+    uint32_t order_count;
+};
+
+struct MarketDepth
+{
+    std::array<DepthLevel, 5> bids;
+    std::array<DepthLevel, 5> asks;
+    size_t bid_levels;  // levels actually populated and other indexes are empty/dummy
+    size_t ask_levels;
+};
