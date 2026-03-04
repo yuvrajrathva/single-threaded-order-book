@@ -1,128 +1,166 @@
 #pragma once
 #include <array>
+#include <iostream>
+#include <ostream>
+
 #include "types.hpp"
 
-struct PriceLevel
-{
-	Qty volume = 0;
-};
-
-uint32_t TICK_SIZE = 1; // For now I kept it 1 for simplicity
-
-template <size_t MaxLevels>
+template <Side S, std::size_t MaxLevels>
 class BookSide
 {
 private:
-	Price base_price;
-	Price best_price;
-	std::array<PriceLevel, MaxLevels> levels{};
+	Price base_price_;
+	Price tick_size_;
+	int best_level_idx_;
+	static constexpr Side side_ = S;
+	std::array<PriceLevel, MaxLevels> levels_{};
 
 public:
-	explicit BookSide(Price base)
-		: base_price(base), best_price(INVALID_PRICE) {}
+	explicit BookSide(Price base, Price tick_size)
+		: base_price_(base), tick_size_(tick_size), best_level_idx_(-1) {}
 
-	inline bool add(Price price, Qty qty, bool is_bid) noexcept
+	void add_order(Order* order, Price price) noexcept
 	{
-		if (!is_valid_price(price))
-			return false;
+		const int idx = price_to_index(price);
+		if(!is_valid_index(idx)) return;
 
-		const size_t idx = index_of(price);
-		levels[idx].volume += qty;
+		PriceLevel& level = levels_[idx];
 
-		if (best_price == INVALID_PRICE || (is_bid && price > best_price))
+		order->next = nullptr;
+		order->prev = level.tail;
+
+		if(level.tail)
 		{
-			best_price = price;
+			level.tail->next = order;
 		}
-		else if (!is_bid && price < best_price)
+		else
 		{
-			best_price = price;
+			level.head = order;
 		}
+		level.tail = order;
 
-		return true;
+		level.total_qty += order->quantity;
+		level.order_count++;
+		
+		update_best(idx);
 	}
 
-	inline bool cancel(Price price, Qty qty, bool is_bid) noexcept
+	void remove_order(Order* order, Price price) noexcept
 	{
-		if (!is_valid_price(price))
-			return false;
+		const int idx = price_to_index(price);
+		if(!is_valid_index(idx)) return;
 
-		const size_t idx = index_of(price);
-		auto &level = levels[idx];
+		PriceLevel& level = levels_[idx];
 
-		if (level.volume < qty)
-			return false;
-
-		level.volume -= qty;
-
-		if (level.volume == 0 && price == best_price)
+		if(order->prev)
 		{
-			best_price = find_next_best(is_bid);
+			order->prev->next = order->next;
+		}
+		else
+		{
+			level.head = order->next;
 		}
 
-		return true;
+		if(order->next)
+		{
+			order->next->prev = order->prev;
+		}
+		else
+		{
+			level.tail = order->prev;
+		}
+
+		level.total_qty -= order->quantity;
+        level.order_count--;
+
+		if (level.order_count == 0 && idx == best_level_idx_) {
+            best_level_idx_ = find_next_best_index(idx);
+        }
 	}
 
-	inline void trade(Price price, Qty qty) noexcept
+	void modify_order(Order* order, Price price, Qty new_qty) noexcept
 	{
-		cancel(price, qty, true); // TODO: This is incorrect. This is dummy trade
+		const int idx = price_to_index(price);
+		if(!is_valid_index(idx)) return;
+
+		PriceLevel& level = levels_[idx];
+
+		// TODO: here we can add move this order after tail if more quantity added (price-time priority)
+		level.total_qty = level.total_qty - order->quantity + new_qty;
+        order->quantity = new_qty
 	}
 
-	inline Price best() const noexcept { return best_price; }
-
-	inline Qty volume_at(Price price) const noexcept
+	[[nodiscard]] Price get_best_price() const noexcept
 	{
-		return levels[index_of(price)].volume;
+		if (best_level_idx_ == -1) return INVALID_PRICE;
+        return base_price_ + (best_level_idx_ * tick_size_);
+	}
+
+	[[nodiscard]] Qty get_best_qty() const noexcept
+    {
+        if (best_level_idx_ == -1) return 0;
+        return levels_[best_level_idx_].total_qty;
+    }
+
+	[[nodiscard]] const PriceLevel& get_level(Price price) const noexcept
+	{
+		const int idx = price_to_index(price);
+		static const PriceLevel empty_level{};
+		if(!is_valid_index(idx)) return empty_level;
+		return levels_[idx];
 	}
 
 private:
-	inline bool is_valid_price(Price price) const noexcept
+	[[nodiscard]] bool is_valid_index(int idx) const noexcept
 	{
-		if (price < base_price)
-			return false;
-
-		const Price delta = price - base_price;
-		const Price level = delta / TICK_SIZE;
-
-		return (delta == (level * TICK_SIZE)) && (level < MaxLevels);
+		return idx >= 0 && idx < static_cast<int>(MaxLevels);
 	}
 
-	inline size_t index_of(Price price) const noexcept
+	[[nodiscard]] int price_to_index(Price price) const noexcept
 	{
-		const Price delta = price - base_price;
-		return static_cast<size_t>(delta / TICK_SIZE);
+		if(price < base_price_) return -1;
+
+		const Price delta = price - base_price_;
+
+		if(delta % tick_size_ != 0) return -1;
+
+		return static_cast<int>(delta / tick_size_);
 	}
 
-	Price find_next_best(bool is_bid) noexcept
+	void update_best(int new_idx)
 	{
-		size_t start = index_of(best_price);
-
-		switch (is_bid)
+		if(best_level_idx_ == -1)
 		{
-		case true:
-			for (size_t i = start; i-- > 0; )
-			{
-				if (levels[i].volume > 0)
-				{
-					return base_price + (i * TICK_SIZE);
-				}
-			}
-			break;
-
-		case false:
-			for (size_t i = start+1;
-				 i < MaxLevels;
-				 ++i)
-			{
-				if (levels[i].volume > 0)
-				{
-					return base_price + (i * TICK_SIZE);
-				}
-			}
-			break;
-
-		default:
-			break;
+			best_level_idx_ = new_idx;
+			return;
 		}
-		return INVALID_PRICE;
+
+		if constexpr (side_ == Side::BID)
+		{
+			if(new_idx > best_level_idx_) best_level_idx_ = new_idx;
+		}
+		else
+		{
+			if(new_idx < best_level_idx_) best_level_idx_ = new_idx;
+		}
+	}
+
+	int find_next_best_index(int idx) 
+	{
+		if constexpr (side_ == Side.BID)
+		{
+			for(int i=idx-1; i>=0; i--)
+			{
+				if(levels_[i].order_count > 0) return i;
+			}
+		}
+		else
+		{
+			for(int i=idx+1; i<static_cast<int>(MaxLevels); i++)
+			{
+				if(levels_[i].order_count > 0) return i;
+			}
+		}
+		return -1;
 	}
 };
